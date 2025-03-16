@@ -8,7 +8,6 @@ from . import models, schemas, auth, event_correlation, ai
 from .database import engine, get_db, drop_tables
 from .config import get_settings
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
 
 settings = get_settings()
 
