@@ -135,6 +135,12 @@ async def get_event(
         raise HTTPException(status_code=404, detail="Event not found")
     return event
 
+@app.get("/reload")
+async def update_reload(
+        db: Session = Depends(get_db),
+):
+    db.query(models.Reload).all()
+
 """@app.get("/events/location/", response_model=List[schemas.Event])
 async def get_nearby_events(
     db: Session = Depends(get_db),
