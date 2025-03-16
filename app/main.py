@@ -8,6 +8,7 @@ from . import models, schemas, auth, event_correlation, ai
 from .database import engine, get_db
 from .config import get_settings
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 settings = get_settings()
 
@@ -139,7 +140,7 @@ async def get_event(
 async def update_reload(
         db: Session = Depends(get_db),
 ):
-    db.execute("drop database hackathon; create database hackathon;")
+    db.execute(text("drop database hackathon; create database hackathon;"))
 
 """@app.get("/events/location/", response_model=List[schemas.Event])
 async def get_nearby_events(
