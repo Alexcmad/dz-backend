@@ -135,6 +135,15 @@ async def get_event(
         raise HTTPException(status_code=404, detail="Event not found")
     return event
 
+@app.delete("/reports/{report_id}", response_model=schemas.Report)
+async def delete_report(report_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
+    report = db.query(models.Report).filter(models.Report.id == report_id).first()
+    if report is None:
+        raise HTTPException(status_code=404, detail="Report not found")
+    db.delete(report)
+    db.commit()
+
+
 @app.get("/reload")
 async def update_reload(
         db: Session = Depends(get_db),
