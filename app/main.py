@@ -35,7 +35,7 @@ async def health_check():
 
 @app.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    db_user = auth.get_user(db, username=user.email)
+    db_user = auth.get_user(db, email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     return auth.create_user(db=db, user=user)
@@ -133,4 +133,12 @@ async def get_event(
     event = db.query(models.Event).filter(models.Event.id == event_id).first()
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
-    return event 
+    return event
+
+"""@app.get("/events/location/", response_model=List[schemas.Event])
+async def get_nearby_events(
+    db: Session = Depends(get_db),
+        current_user: models.User = Depends(auth.get_current_active_user
+):
+    current_location = current_user.location
+    """

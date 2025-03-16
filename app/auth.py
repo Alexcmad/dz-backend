@@ -23,12 +23,12 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-def get_user(db: Session, username: str):
-    return db.query(models.User).filter(models.User.email == username).first()
+def get_user(db: Session, email: str):
+    return db.query(models.User).filter(models.User.email == email).first()
 
 
-def authenticate_user(db: Session, username: str, password: str):
-    user = get_user(db, username)
+def authenticate_user(db: Session, email: str, password: str):
+    user = get_user(db, email)
     if not user:
         return False
     if not verify_password(password, user.hashed_password):
@@ -60,13 +60,13 @@ async def get_current_user(
         payload = jwt.decode(
             token, settings.secret_key, algorithms=[settings.algorithm]
         )
-        username: str = payload.get("sub")
-        if username is None:
+        email: str = payload.get("sub")
+        if email is None:
             raise credentials_exception
-        token_data = schemas.TokenData(username=username)
+        token_data = schemas.TokenData(email=email)
     except JWTError:
         raise credentials_exception
-    user = get_user(db, username=token_data.username)
+    user = get_user(db, email=token_data.email)
     if user is None:
         raise credentials_exception
     return user
@@ -84,11 +84,10 @@ def create_user(db: Session, user: schemas.UserCreate):
     hashed_password = get_password_hash(user.password)
     db_user = models.User(
         email=user.email,
-        username=user.username,
-        first_name=user.first_name,
-        last_name=user.last_name,
-        phone_number=user.phone_number,
-        hashed_password=hashed_password
+        name = user.name,
+        phone=user.phone,
+        hashed_password=hashed_password,
+        userType=user.userType
     )
     db.add(db_user)
     db.commit()

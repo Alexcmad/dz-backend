@@ -5,14 +5,14 @@ from datetime import datetime
 
 class UserBase(BaseModel):
     email: EmailStr
-    username: str
-    first_name: str
-    last_name: str
-    phone_number: str
+    name: str
+    phone: str
+    userType: str
 
 
 class UserCreate(UserBase):
     password: str
+    agreeTerms: bool
 
 
 class UserInDB(UserBase):
