@@ -7,6 +7,7 @@ from datetime import timedelta, datetime
 from . import models, schemas, auth, event_correlation, ai
 from .database import engine, get_db
 from .config import get_settings
+from fastapi.middleware.cors import CORSMiddleware
 
 settings = get_settings()
 
@@ -16,6 +17,13 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Hazard Reporting System")
 
 # Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Change this to specific origins if needed
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+)
 
 @app.get("/health")
 async def health_check():
