@@ -1,31 +1,43 @@
 from typing import Annotated, List
 from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from . import models, schemas, auth, event_correlation
+from datetime import timedelta, datetime
+from . import models, schemas, auth, event_correlation, ai
 from .database import engine, get_db
+from .config import get_settings
 
+settings = get_settings()
+
+# Create database tables
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Hazard Reporting System")
 
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.allowed_hosts,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "database": "connected" if engine.connect() else "disconnected"
+    }
 
 @app.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    db_user = auth.get_user(db, username=user.username)
+    db_user = auth.get_user(db, username=user.email)
     if db_user:
-        raise HTTPException(status_code=400, detail="Username already registered")
-    
-    hashed_password = auth.get_password_hash(user.password)
-    db_user = models.User(
-        email=user.email,
-        username=user.username,
-        hashed_password=hashed_password
-    )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
+        raise HTTPException(status_code=400, detail="Email already registered")
+    return auth.create_user(db=db, user=user)
 
 
 @app.post("/token", response_model=schemas.Token)
@@ -37,10 +49,13 @@ async def login_for_access_token(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = auth.create_access_token(data={"sub": user.username})
+    access_token = auth.create_access_token(
+        data={"sub": user.email},
+        expires_delta=timedelta(minutes=30)
+    )
     return {"access_token": access_token, "token_type": "bearer"}
 
 

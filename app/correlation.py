@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
 from typing import List, Optional
+
+from sqlalchemy import event
 from sqlalchemy.orm import Session
-from . import models
+from . import models, ai
 import numpy as np
 
 
@@ -34,8 +36,7 @@ class HybridCorrelator:
         distance = R * c
 
         # Convert distance to similarity score (0-1)
-        # Score decreases as distance increases, reaching 0.5 at max_distance
-        similarity = 1 / (1 + distance/self.max_distance)
+        similarity = max(0, 1 - (distance / self.max_distance))
         return similarity
 
     def calculate_tag_similarity(self, tags1: List[str], tags2: List[str]) -> float:
@@ -55,7 +56,10 @@ class HybridCorrelator:
             return 0.0
         
         # Convert time difference to similarity score (1.0 to 0.0)
-        return 1.0 - (time_diff / self.max_time_window)
+        # Using exponential decay to give higher weight to more recent events
+        hours_diff = time_diff.total_seconds() / 3600
+        similarity = np.exp(-hours_diff / (self.max_time_window.total_seconds() / 3600))
+        return similarity
 
     def get_correlation_score(self, report1: models.Report, report2: models.Report) -> float:
         """Calculate overall correlation score between two reports."""
@@ -133,6 +137,18 @@ class EventCorrelationService:
         if matching_event:
             # Update existing event
             matching_event.reports.append(report)
+            
+            # Create a summary of the event for AI description generation
+            event_summary = f"Location: {matching_event.location.name}\n"
+            event_summary += f"Time: {report.created_at.strftime('%Y-%m-%d %H:%M:%S')}\n"
+            event_summary += f"Tags: {', '.join(matching_event.tags)}\n"
+            event_summary += "Reports:\n"
+            for r in matching_event.reports:
+                event_summary += f"- {r.content} (Severity: {r.severity}, Time: {r.created_at.strftime('%Y-%m-%d %H:%M:%S')})\n"
+            
+            # Generate new description
+            matching_event.description = ai.generate_event_description(event_summary)
+            
             # Update tags if new ones are present
             matching_event.tags = list(set(matching_event.tags + report.tags))
             db.commit()
@@ -145,6 +161,16 @@ class EventCorrelationService:
                 location_id=report.location_id,
                 reports=[report]
             )
+            
+            # Create initial summary for AI description
+            event_summary = f"Location: {report.location.name}\n"
+            event_summary += f"Time: {report.created_at.strftime('%Y-%m-%d %H:%M:%S')}\n"
+            event_summary += f"Tags: {', '.join(report.tags)}\n"
+            event_summary += f"Initial Report: {report.content} (Severity: {report.severity})\n"
+            
+            # Generate initial description
+            new_event.description = ai.generate_event_description(event_summary)
+            
             db.add(new_event)
             db.commit()
             db.refresh(new_event)
