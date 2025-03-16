@@ -16,13 +16,6 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Hazard Reporting System")
 
 # Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.allowed_hosts,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 @app.get("/health")
 async def health_check():
