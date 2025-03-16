@@ -24,4 +24,7 @@ def get_db():
     try:
         yield db
     finally:
-        db.close() 
+        db.close()
+
+def drop_tables():
+    Base.metadata.drop_all(engine)
